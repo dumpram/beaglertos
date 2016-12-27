@@ -15,6 +15,7 @@
 #define INTC_CONTROL		0x0048
 #define INTC_PROTECTION		0x004C
 #define INTC_IDLE		    0x0050
+#define INTC_IRQ_PRIORITY   0x0060
 #define INTC_THRESHOLD		0x0068
 #define INTC_MIR0		    0x0084
 #define INTC_MIR_CLEAR0		0x0088
@@ -29,6 +30,13 @@
 #define SPURIOUSIRQ_MASK	(0x1ffffff << 7)
 #define INTCPS_NR_ILR_REGS	128
 #define INTCPS_NR_MIR_REGS	4
+
+#define portINTC_SIR *((volatile uint32_t *) \
+    (OMAP34XX_IC_BASE + INTC_SIR))
+#define portINTC_THRESHOLD *((volatile uint32_t *) \
+    (OMAP34XX_IC_BASE + INTC_THRESHOLD))
+#define portINTC_IRQ_PRIORITY *((volatile uint32_t *) \
+        (OMAP34XX_IC_BASE + INTC_IRQ_PRIORITY)) 
 
 
 #endif /* end of include guard: PLATFORM_AM335X_INTC_H */

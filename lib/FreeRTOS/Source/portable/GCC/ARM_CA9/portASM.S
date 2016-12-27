@@ -60,9 +60,9 @@
 	.set IRQ_MODE,	0x12
 
 	/* Hardware registers. */
-	.extern ulICCIAR
-	.extern ulICCEOIR
-	.extern ulICCPMR
+	.extern ulINTC_SIR_ADDRESS
+	.extern ulINTC_CONTROL_ADDRESS
+	.extern ulINTC_THRESHOLD_ADDRESS
 
 	/* Variables and functions. */
 	.extern ulMaxAPIPriorityMask
@@ -145,7 +145,7 @@
 	STR		R1, [R0]
 
 	/* Ensure the priority mask is correct for the critical nesting depth. */
-	LDR		R2, ulICCPMRConst
+	LDR		R2, ulTHRESHOLD
 	LDR		R2, [R2]
 	CMP		R1, #0
 	MOVEQ	R4, #255
@@ -218,9 +218,16 @@ FreeRTOS_IRQ_Handler:
 
 	/* Read value from the interrupt acknowledge register, which is stored in r0
 	for future parameter and interrupt clearing use. */
-	LDR 	r2, ulICCIARConst
+	LDR 	r2, ulSIR
 	LDR		r2, [r2]
 	LDR		r0, [r2]
+
+    // we need to add writing to bit 1 of control register to allow
+    // new interrupts
+    LDR     r2, ulCONTROL
+    MOV     r4, #1
+    STR     r4, [r2]
+
 
     // interrupt controller related
 
@@ -241,12 +248,12 @@ FreeRTOS_IRQ_Handler:
 	DSB
 	ISB
 
-    // interrupt controller related
+    // interrupt controller related -- interrupt done
 
 	/* Write the value read from ICCIAR to ICCEOIR. */
-	LDR 	r4, ulICCEOIRConst
-	LDR		r4, [r4]
-	STR		r0, [r4]
+	@LDR 	r4, ulICCEOIRConst
+	@LDR		r4, [r4]
+	@STR		r0, [r4]
 
     // interrupt controller related
 
@@ -341,9 +348,14 @@ vApplicationIRQHandler:
 	POP {PC}
 
 
-ulICCIARConst:	.word ulICCIAR
-ulICCEOIRConst:	.word ulICCEOIR
-ulICCPMRConst: .word ulICCPMR
+@ulICCIARConst:	.word ulICCIAR
+@ulICCEOIRConst:	.word ulICCEOIR
+@ulICCPMRConst: .word ulICCPMR
+
+ulTHRESHOLD: .word ulINTC_THRESHOLD_ADDRESS
+ulSIR: .word ulINTC_SIR_ADDRESS
+ulCONTROL: .word ulINTC_CONTROL_ADDRESS
+
 pxCurrentTCBConst: .word pxCurrentTCB
 ulCriticalNestingConst: .word ulCriticalNesting
 ulPortTaskHasFPUContextConst: .word ulPortTaskHasFPUContext

@@ -73,7 +73,6 @@
 #ifdef __cplusplus
 	extern "C" {
 #endif
-
 /*-----------------------------------------------------------
  * Port specific definitions.
  *
@@ -83,6 +82,9 @@
  * These settings should not be altered.
  *-----------------------------------------------------------
  */
+
+/* Specific platform. */
+#include <platform-am335x-intc.h>
 
 /* Type definitions. */
 #define portCHAR		char
@@ -207,42 +209,48 @@ by default. */
 	} /* extern C */
 #endif
 
+// binary point gic dependency
 
 /* The number of bits to shift for an interrupt priority is dependent on the
 number of bits implemented by the interrupt controller. */
-#if configUNIQUE_INTERRUPT_PRIORITIES == 16
-	#define portPRIORITY_SHIFT 4
-	#define portMAX_BINARY_POINT_VALUE	3
-#elif configUNIQUE_INTERRUPT_PRIORITIES == 32
-	#define portPRIORITY_SHIFT 3
-	#define portMAX_BINARY_POINT_VALUE	2
-#elif configUNIQUE_INTERRUPT_PRIORITIES == 64
-	#define portPRIORITY_SHIFT 2
-	#define portMAX_BINARY_POINT_VALUE	1
-#elif configUNIQUE_INTERRUPT_PRIORITIES == 128
-	#define portPRIORITY_SHIFT 1
-	#define portMAX_BINARY_POINT_VALUE	0
-#elif configUNIQUE_INTERRUPT_PRIORITIES == 256
-	#define portPRIORITY_SHIFT 0
-	#define portMAX_BINARY_POINT_VALUE	0
-#else
-	#error Invalid configUNIQUE_INTERRUPT_PRIORITIES setting.  configUNIQUE_INTERRUPT_PRIORITIES must be set to the number of unique priorities implemented by the target hardware
-#endif
+// #if configUNIQUE_INTERRUPT_PRIORITIES == 16
+// 	#define portPRIORITY_SHIFT 4
+// 	#define portMAX_BINARY_POINT_VALUE	3
+// #elif configUNIQUE_INTERRUPT_PRIORITIES == 32
+// 	#define portPRIORITY_SHIFT 3
+// 	#define portMAX_BINARY_POINT_VALUE	2
+// #elif configUNIQUE_INTERRUPT_PRIORITIES == 64
+// 	#define portPRIORITY_SHIFT 2
+// 	#define portMAX_BINARY_POINT_VALUE	1
+// #elif configUNIQUE_INTERRUPT_PRIORITIES == 128
+// 	#define portPRIORITY_SHIFT 1
+// 	#define portMAX_BINARY_POINT_VALUE	0
+// #elif configUNIQUE_INTERRUPT_PRIORITIES == 256
+// 	#define portPRIORITY_SHIFT 0
+// 	#define portMAX_BINARY_POINT_VALUE	0
+// #else
+// 	#error Invalid configUNIQUE_INTERRUPT_PRIORITIES setting.  configUNIQUE_INTERRUPT_PRIORITIES must be set to the number of unique priorities implemented by the target hardware
+// #endif
+
+// binary point gic dependency
+
+
+// these GIC registers are completely replaced by platform-am335x-intc.h
 
 /* Interrupt controller access addresses. */
-#define portICCPMR_PRIORITY_MASK_OFFSET  						( 0x04 )
-#define portICCIAR_INTERRUPT_ACKNOWLEDGE_OFFSET 				( 0x0C )
-#define portICCEOIR_END_OF_INTERRUPT_OFFSET 					( 0x10 )
-#define portICCBPR_BINARY_POINT_OFFSET							( 0x08 )
-#define portICCRPR_RUNNING_PRIORITY_OFFSET						( 0x14 )
-
-#define portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS 		( configINTERRUPT_CONTROLLER_BASE_ADDRESS + configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET )
-#define portICCPMR_PRIORITY_MASK_REGISTER 					( *( ( volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCPMR_PRIORITY_MASK_OFFSET ) ) )
-#define portICCIAR_INTERRUPT_ACKNOWLEDGE_REGISTER_ADDRESS 	( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCIAR_INTERRUPT_ACKNOWLEDGE_OFFSET )
-#define portICCEOIR_END_OF_INTERRUPT_REGISTER_ADDRESS 		( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCEOIR_END_OF_INTERRUPT_OFFSET )
-#define portICCPMR_PRIORITY_MASK_REGISTER_ADDRESS 			( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCPMR_PRIORITY_MASK_OFFSET )
-#define portICCBPR_BINARY_POINT_REGISTER 					( *( ( const volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCBPR_BINARY_POINT_OFFSET ) ) )
-#define portICCRPR_RUNNING_PRIORITY_REGISTER 				( *( ( const volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCRPR_RUNNING_PRIORITY_OFFSET ) ) )
+// #define portICCPMR_PRIORITY_MASK_OFFSET  						( 0x04 )
+// #define portICCIAR_INTERRUPT_ACKNOWLEDGE_OFFSET 				( 0x0C )
+// #define portICCEOIR_END_OF_INTERRUPT_OFFSET 					( 0x10 )
+// #define portICCBPR_BINARY_POINT_OFFSET							( 0x08 )
+// #define portICCRPR_RUNNING_PRIORITY_OFFSET						( 0x14 )
+//
+//
+// #define portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS 		( configINTERRUPT_CONTROLLER_BASE_ADDRESS + configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET )
+// #define portICCPMR_PRIORITY_MASK_REGISTER 					( *( ( volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCPMR_PRIORITY_MASK_OFFSET ) ) )
+// #define portICCIAR_INTERRUPT_ACKNOWLEDGE_REGISTER_ADDRESS 	( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCIAR_INTERRUPT_ACKNOWLEDGE_OFFSET )
+// #define portICCEOIR_END_OF_INTERRUPT_REGISTER_ADDRESS 		( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCEOIR_END_OF_INTERRUPT_OFFSET )
+// #define portICCPMR_PRIORITY_MASK_REGISTER_ADDRESS 			( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCPMR_PRIORITY_MASK_OFFSET )
+// #define portICCBPR_BINARY_POINT_REGISTER 					( *( ( const volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCBPR_BINARY_POINT_OFFSET ) ) )
+// #define portICCRPR_RUNNING_PRIORITY_REGISTER 				( *( ( const volatile uint32_t * ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portICCRPR_RUNNING_PRIORITY_OFFSET ) ) )
 
 #endif /* PORTMACRO_H */
-

@@ -37,7 +37,7 @@ RTOS_OBJ := $(patsubst %.c, %.o, $(RTOS_SRC))
 RTOS_AOBJ := $(patsubst %.S, %.o, $(RTOS_ASRC))
 
 # Compiler flags
-CFLAGS := -I$(RTOS_INC) -I . -I $(FREERTOS_PORT) \
+CFLAGS := -I$(RTOS_INC) -I . -I $(FREERTOS_PORT) -I inc \
 	-mcpu=cortex-a8 \
 	-mfpu=neon \
 	-mthumb-interwork \
