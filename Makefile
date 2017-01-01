@@ -12,6 +12,8 @@ CC = $(PREFIX)gcc
 AS = $(PREFIX)as
 LD = $(PREFIX)ld
 
+APP_LOAD_ADDR = 0x80000000 # LOAD IN RAM
+
 LIB_C = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/arm-none-eabi/lib
 LIB_GCC = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/lib/gcc/arm-none-eabi/5.4.1
 
@@ -74,7 +76,7 @@ CFLAGS := -I$(RTOS_INC) -I . -I $(FREERTOS_PORT) -I inc $(PLATFORM_INC) \
 LDFLAGS := -e Entry -u Entry -u __aeabi_uidiv -u __aeabi_idiv --gc-sections
 
 
-all : obj/app.out
+all : app
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -89,6 +91,12 @@ obj/app.out : $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ)
 	-L$(PLATFORM_LPATH) -L$(LIB_C) -L$(LIB_GCC)  \
 	  -lc -lgcc $(PLATFORM_LIB) $(PLATFORM_LIB) -T$(LINKER_SCRIPT)
 	@echo "Linked app successfully!"
+
+app : obj/app.out
+	@gcc -o ti_image tools/tiimage.c
+	./ti_image $(APP_LOAD_ADDR) NONE obj/app.out app
+	@rm ti_image
+	@echo "Generated image successfully!"
 
 clean :
 	rm $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ) obj/app.out
