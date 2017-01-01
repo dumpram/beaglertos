@@ -12,11 +12,12 @@ CC = $(PREFIX)gcc
 AS = $(PREFIX)as
 LD = $(PREFIX)ld
 
-LIBC = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/arm-none-eabi/lib
+LIB_C = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/arm-none-eabi/lib
+LIB_GCC = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/lib/gcc/arm-none-eabi/5.4.1
 
 
 # User source files
-USER_SRC = src
+USER_SRC = $(wildcard src/*.c)
 
 # RTOS root
 FREERTOS_ROOT = lib/FreeRTOS/Source
@@ -33,9 +34,8 @@ FREERTOS_MEMMANG = lib/FreeRTOS/Source/portable/MemMang
 # Gathering source files
 RTOS_SRC := $(wildcard $(FREERTOS_ROOT)/*.c)
 RTOS_SRC += $(wildcard $(FREERTOS_PORT)/*.c)
-#RTOS_SRC += $(wildcard $(FREERTOS_PORT_COMMON)/*.c)
 RTOS_SRC += $(wildcard $(FREERTOS_MEMMANG)/heap_1.c)
-RTOS_SRC += $(wildcard $(USER_SRC)/*.c)
+
 RTOS_INC := $(FREERTOS_ROOT)/include
 
 RTOS_ASRC += $(wildcard $(FREERTOS_PORT)/*.S)
@@ -46,16 +46,21 @@ RTOS_AOBJ := $(patsubst %.S, %.o, $(RTOS_ASRC))
 
 # Platform libraries paths
 PLATFORM_LPATH := lib/platform-am335x
-PLATFORM_LIB := -ldrivers \
-				-lplatform \
-				-lsystem_config \
-				-lutils
+
+PLATFORM_LIB := -lplatform \
+				-lutils \
+				-ldrivers \
+				-lsystem_config
+
 
 PLATFORM_INC := -Ilib/platform-am335x/include \
 				-Ilib/platform-am335x/include/hw \
 				-Ilib/platform-am335x/include/armv7a/am335x
 
 LINKER_SCRIPT = linker.lds
+
+# User Objects
+USER_OBJ := $(patsubst %.c, %.o, $(USER_SRC))
 
 
 # Compiler flags
@@ -65,8 +70,11 @@ CFLAGS := -I$(RTOS_INC) -I . -I $(FREERTOS_PORT) -I inc $(PLATFORM_INC) \
 	-mthumb-interwork \
 	-mfloat-abi=softfp
 
+# Linker flags
+LDFLAGS := -e Entry -u Entry -u __aeabi_uidiv -u __aeabi_idiv --gc-sections
 
-all : $(RTOS_OBJ) $(RTOS_AOBJ)
+
+all : obj/app.out
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -76,10 +84,11 @@ all : $(RTOS_OBJ) $(RTOS_AOBJ)
 	@$(AS) $(CFLAGS) -c $< -o $@
 	@echo "Compiled "$<" successfully!"
 
-app : $(RTOS_OBJ) $(RTOS_AOBJ)
-	@$(LD) -L$(PLATFORM_LPATH) -L$(LIBC) -T$(LINKER_SCRIPT)  \
-	 -o $@ $(RTOS_OBJ) $(RTOS_AOBJ) $(PLATFORM_LIB) -lc
+obj/app.out : $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ)
+	@$(LD) $(LDFLAGS) -o $@ $(USER_OBJ) $(RTOS_OBJ) $(RTOS_AOBJ) \
+	-L$(PLATFORM_LPATH) -L$(LIB_C) -L$(LIB_GCC)  \
+	  -lc -lgcc $(PLATFORM_LIB) $(PLATFORM_LIB) -T$(LINKER_SCRIPT)
 	@echo "Linked app successfully!"
 
 clean :
-	rm $(RTOS_OBJ) $(RTOS_AOBJ)
+	rm $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ) obj/app.out
