@@ -6,6 +6,8 @@
 
 
 # Toolchain
+TOOLCHAIN_ROOT = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3
+
 PREFIX = ~/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/bin/arm-none-eabi-
 
 CC = $(PREFIX)gcc
@@ -14,9 +16,8 @@ LD = $(PREFIX)ld
 
 APP_LOAD_ADDR = 0x80000000 # LOAD IN RAM
 
-LIB_C = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/arm-none-eabi/lib
-LIB_GCC = /home/dumpram/ARMCompilers/gcc-arm-none-eabi-5_4-2016q3/lib/gcc/arm-none-eabi/5.4.1
-
+LIB_C = $(TOOLCHAIN_ROOT)/arm-none-eabi/lib
+LIB_GCC = $(TOOLCHAIN_ROOT)/lib/gcc/arm-none-eabi/5.4.1
 
 # User source files
 USER_SRC = $(wildcard src/*.c)
@@ -99,4 +100,4 @@ app : obj/app.out
 	@echo "Generated image successfully!"
 
 clean :
-	rm $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ) obj/app.out
+	rm $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ) obj/app.out app
