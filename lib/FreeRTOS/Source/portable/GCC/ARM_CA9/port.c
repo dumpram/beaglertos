@@ -153,7 +153,7 @@ debugger. */
 
 /* The space on the stack required to hold the FPU registers.  This is 32 64-bit
 registers, plus a 32-bit status register. */
-#define portFPU_REGISTER_WORDS	( ( 32 * 2 ) + 1 )
+#define portFPU_REGISTER_WORDS	( ( 8 * 2 ) + 1 ) // D0-D7 + FPSCR
 
 /*-----------------------------------------------------------*/
 

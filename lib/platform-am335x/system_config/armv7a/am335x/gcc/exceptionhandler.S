@@ -49,8 +49,8 @@
         .global SVC_Handler
         .global UndefInstHandler
         .global CPUAbortHandler
-        .global fnRAMVectors       
-        
+        .global fnRAMVectors
+
         .equ ADDR_SIR_IRQ, SOC_AINTC_REGS + INTC_SIR_IRQ
         .equ ADDR_SIR_FIQ, SOC_AINTC_REGS + INTC_SIR_FIQ
         .equ ADDR_CONTROL, SOC_AINTC_REGS + INTC_CONTROL
@@ -64,8 +64,11 @@
 
         .equ MASK_SVC_NUM, 0xFF000000
         .equ MODE_SYS, 0x1F
-        .equ MODE_IRQ, 0x12 
+        .equ MODE_IRQ, 0x12
         .equ I_BIT, 0x80
+
+        .extern ulPortYieldRequired
+        .extern ulPortInterruptNesting
 
 @**************************** Text Section ************************************
         .text
@@ -74,10 +77,10 @@
         .code 32
 @******************************************************************************
 @*                  Function Definition of SWI Handler
-@******************************************************************************    
+@******************************************************************************
 @
 @ The SVC Handler switches to system mode if the SVC number is 458752. If the
-@ SVC number is different, no mode switching will be done. No other SVC are 
+@ SVC number is different, no mode switching will be done. No other SVC are
 @ handled here
 @
 SVC_Handler:
@@ -86,7 +89,7 @@ SVC_Handler:
         LDR      r0, [r14, #-4]           @ R0 points to SWI instruction
         BIC      r0, r0, #MASK_SVC_NUM    @ Get the SWI number
         CMP      r0, #458752
-        MRSEQ    r1, spsr                 @ Copy SPSR  
+        MRSEQ    r1, spsr                 @ Copy SPSR
         ORREQ    r1, r1, #0x1F            @ Change the mode to System
         MSREQ    spsr_cf, r1              @ Restore SPSR
         ADD      r13, r13, #0x4           @ Adjust the stack pointer
@@ -94,7 +97,7 @@ SVC_Handler:
 
 @******************************************************************************
 @*                  Function Definition of IRQ Handler
-@******************************************************************************    
+@******************************************************************************
 @
 @ The IRQ handler jumps to the ISR of highest priority pending IRQ.
 @ This handler is a prioritized interrupt handler. The handler is a
@@ -110,12 +113,12 @@ IRQHandler:
         VSTMDB   r13!, {d0-d7}            @ Save D0-D7 NEON/VFP registers
 
         LDR      r0, =ADDR_THRESHOLD      @ Get the IRQ Threshold
-        LDR      r1, [r0, #0]             
+        LDR      r1, [r0, #0]
         STMFD    r13!, {r1}               @ Save the threshold value
 
-        LDR      r2, =ADDR_IRQ_PRIORITY   @ Get the active IRQ priority          
+        LDR      r2, =ADDR_IRQ_PRIORITY   @ Get the active IRQ priority
         LDR      r3, [r2, #0]
-        STR      r3, [r0, #0]             @ Set the priority as threshold   
+        STR      r3, [r0, #0]             @ Set the priority as threshold
 
         LDR      r1, =ADDR_SIR_IRQ        @ Get the Active IRQ
         LDR      r2, [r1]
@@ -123,11 +126,11 @@ IRQHandler:
 
         MOV      r0, #NEWIRQAGR           @ To enable new IRQ Generation
         LDR      r1, =ADDR_CONTROL
-        
+
         CMP      r3, #0                   @ Check if non-maskable priority 0
         STRNE    r0, [r1]                 @ if > 0 priority, acknowledge INTC
         DSB                               @ Make sure acknowledgement is completed
-        
+
         @
         @ Enable IRQ and switch to system mode. But IRQ shall be enabled
         @ only if priority level is > 0. Note that priority 0 is non maskable.
@@ -137,14 +140,14 @@ IRQHandler:
         ORR      r14, r14, #MODE_SYS
         BICNE    r14, r14, #I_BIT         @ Enable IRQ if priority > 0
         MSR      cpsr, r14
-                             
-       
+
+
         STMFD    r13!, {r14}              @ Save lr_usr
 
         LDR      r0, =fnRAMVectors        @ Load the base of the vector table
         ADD      r14, pc, #0              @ Save return address in LR
         LDR      pc, [r0, r2, lsl #2]     @ Jump to the ISR
- 
+
         LDMFD    r13!, {r14}              @ Restore lr_usr
 
         @
@@ -152,14 +155,21 @@ IRQHandler:
         @
         CPSID    i, #MODE_IRQ
 
-        LDR      r0, =ADDR_THRESHOLD      @ Get the IRQ Threshold
+        LDR      r0, =ulPortYieldRequired
+        LDR      r1, [r0]
+        CMP      r0, #0
+        BEQ      exit
+
+switch:         
+
+exit:   LDR      r0, =ADDR_THRESHOLD      @ Get the IRQ Threshold
 
         LDR      r1, [r0, #0]
         CMP      r1, #0                   @ If priority 0
         MOVEQ    r2, #NEWIRQAGR           @ Enable new IRQ Generation
-        LDREQ    r1, =ADDR_CONTROL 
+        LDREQ    r1, =ADDR_CONTROL
         STREQ    r2, [r1]
-        
+
         LDMFD    r13!, {r1}
         STR      r1, [r0, #0]             @ Restore the threshold value
         VLDMIA   r13!, {d0-d7}            @ Restore D0-D7 Neon/VFP registers
@@ -167,11 +177,13 @@ IRQHandler:
         MSR      spsr, r12                @ Restore spsr
         VMSR     fpscr, r1                @ Restore fpscr
 
+
+
         LDMFD    r13!, {r0-r3, r12, pc}^  @ Restore the context and return
 
 @******************************************************************************
 @*                  Function Definition of FIQ Handler
-@******************************************************************************    
+@******************************************************************************
 @
 @ FIQ is not supported for this SoC.
 @
@@ -180,7 +192,7 @@ FIQHandler:
 
 @******************************************************************************
 @*             Function Definition of Abort/Undef Handler
-@******************************************************************************    
+@******************************************************************************
 @
 @ The Abort handler goes to the C handler of abort mode. Note that the undefined
 @ instruction is not handled separately.
@@ -192,7 +204,7 @@ UndefInstHandler:
 @ Disable all the interrupts
 @
     @    MRS     r0, cpsr                  @ Read from CPSR
-    @    ORR     r0, r0, #0xC0             @ Clear the IRQ and FIQ bits    
+    @    ORR     r0, r0, #0xC0             @ Clear the IRQ and FIQ bits
     @    MSR     cpsr, r0                  @ Write to CPSR
     @    ADD     r14, pc, #0               @ Store the return address
     @    LDR     pc, =CPUAbortHandler      @ Go to C handler
@@ -200,13 +212,15 @@ UndefInstHandler:
 @ Go to infinite loop if returned from C handler
 @
 loop0:
-        B       loop0                      
+        B       loop0
 
 @*****************************************************************************
 @
 @ End of the file
 @
     .end
-    
-    
-    
+
+.macro portSAVE_CONTEXT
+    cpsid i, #MODE_IRQ
+
+.endm

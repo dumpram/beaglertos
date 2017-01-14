@@ -12,11 +12,11 @@ extern volatile unsigned int cntValue;
 
 int main() {
     configure_platform();
-    ConsoleUtilsPrintf("Platform initialized.");
+    ConsoleUtilsPrintf("Platform initialized.\r\n");
 
     while (1) {
         if (cntValue == 1000) {
-            ConsoleUtilsPrintf("One second passed!");
+            ConsoleUtilsPrintf("One second passed!\r\n");
             cntValue = 0;
         }
     }
