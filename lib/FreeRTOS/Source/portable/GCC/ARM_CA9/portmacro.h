@@ -83,9 +83,6 @@
  *-----------------------------------------------------------
  */
 
-/* Specific platform. */
-#include <platform-am335x-intc.h>
-
 /* Type definitions. */
 #define portCHAR		char
 #define portFLOAT		float

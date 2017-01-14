@@ -145,13 +145,13 @@
 	STR		R1, [R0]
 
 	/* Ensure the priority mask is correct for the critical nesting depth. */
-	LDR		R2, ulTHRESHOLD
-	LDR		R2, [R2]
-	CMP		R1, #0
-	MOVEQ	R4, #255
-	LDRNE	R4, ulMaxAPIPriorityMaskConst
-	LDRNE	R4, [R4]
-	STR		R4, [R2]
+	@LDR		R2, ulTHRESHOLD
+	@LDR		R2, [R2]
+	@CMP		R1, #0
+	@MOVEQ	R4, #255
+	@LDRNE	R4, ulMaxAPIPriorityMaskConst
+	@LDRNE	R4, [R4]
+	@STR		R4, [R2]
 
     // interrupt controller related
 
@@ -189,163 +189,163 @@ vPortRestoreTaskContext:
 	CPS		#SYS_MODE
 	portRESTORE_CONTEXT
 
-.align 4
-.type FreeRTOS_IRQ_Handler, %function
-FreeRTOS_IRQ_Handler:
-	/* Return to the interrupted instruction. */
-	SUB		lr, lr, #4
-
-	/* Push the return address and SPSR. */
-	PUSH	{lr}
-	MRS		lr, SPSR
-	PUSH	{lr}
-
-	/* Change to supervisor mode to allow reentry. */
-	CPS		#SVC_MODE
-
-	/* Push used registers. */
-	PUSH	{r0-r4, r12}
-
-	/* Increment nesting count.  r3 holds the address of ulPortInterruptNesting
-	for future use.  r1 holds the original ulPortInterruptNesting value for
-	future use. */
-	LDR		r3, ulPortInterruptNestingConst
-	LDR		r1, [r3]
-	ADD		r4, r1, #1
-	STR		r4, [r3]
-
-    // interrupt controller related
-
-	/* Read value from the interrupt acknowledge register, which is stored in r0
-	for future parameter and interrupt clearing use. */
-	LDR 	r2, ulSIR
-	LDR		r2, [r2]
-	LDR		r0, [r2]
-
-    // we need to add writing to bit 1 of control register to allow
-    // new interrupts
-    LDR     r2, ulCONTROL
-    MOV     r4, #1
-    STR     r4, [r2]
-
-
-    // interrupt controller related
-
-	/* Ensure bit 2 of the stack pointer is clear.  r2 holds the bit 2 value for
-	future use. */
-	MOV		r2, sp
-	AND		r2, r2, #4
-	SUB		sp, sp, r2
-
-	/* Call the interrupt handler. */
-	PUSH	{r0-r3, lr}
-	LDR		r1, vApplicationIRQHandlerConst
-	BLX		r1
-	POP		{r0-r3, lr}
-	ADD		sp, sp, r2
-
-	CPSID	i
-	DSB
-	ISB
-
-    // interrupt controller related -- interrupt done
-
-	/* Write the value read from ICCIAR to ICCEOIR. */
-	@LDR 	r4, ulICCEOIRConst
-	@LDR		r4, [r4]
-	@STR		r0, [r4]
-
-    // interrupt controller related
-
-	/* Restore the old nesting count. */
-	STR		r1, [r3]
-
-	/* A context switch is never performed if the nesting count is not 0. */
-	CMP		r1, #0
-	BNE		exit_without_switch
-
-	/* Did the interrupt request a context switch?  r1 holds the address of
-	ulPortYieldRequired and r0 the value of ulPortYieldRequired for future
-	use. */
-	LDR		r1, =ulPortYieldRequired
-	LDR		r0, [r1]
-	CMP		r0, #0
-	BNE		switch_before_exit
-
-exit_without_switch:
-	/* No context switch.  Restore used registers, LR_irq and SPSR before
-	returning. */
-	POP		{r0-r4, r12}
-	CPS		#IRQ_MODE
-	POP		{LR}
-	MSR		SPSR_cxsf, LR
-	POP		{LR}
-	MOVS	PC, LR
-
-switch_before_exit:
-	/* A context swtich is to be performed.  Clear the context switch pending
-	flag. */
-	MOV		r0, #0
-	STR		r0, [r1]
-
-	/* Restore used registers, LR-irq and SPSR before saving the context
-	to the task stack. */
-	POP		{r0-r4, r12}
-	CPS		#IRQ_MODE
-	POP		{LR}
-	MSR		SPSR_cxsf, LR
-	POP		{LR}
-	portSAVE_CONTEXT
-
-	/* Call the function that selects the new task to execute.
-	vTaskSwitchContext() if vTaskSwitchContext() uses LDRD or STRD
-	instructions, or 8 byte aligned stack allocated data.  LR does not need
-	saving as a new LR will be loaded by portRESTORE_CONTEXT anyway. */
-	LDR		R0, vTaskSwitchContextConst
-	BLX		R0
-
-	/* Restore the context of, and branch to, the task selected to execute
-	next. */
-	portRESTORE_CONTEXT
-
-
-/******************************************************************************
- * If the application provides an implementation of vApplicationIRQHandler(),
- * then it will get called directly without saving the FPU registers on
- * interrupt entry, and this weak implementation of
- * vApplicationIRQHandler() will not get called.
- *
- * If the application provides its own implementation of
- * vApplicationFPUSafeIRQHandler() then this implementation of
- * vApplicationIRQHandler() will be called, save the FPU registers, and then
- * call vApplicationFPUSafeIRQHandler().
- *
- * Therefore, if the application writer wants FPU registers to be saved on
- * interrupt entry their IRQ handler must be called
- * vApplicationFPUSafeIRQHandler(), and if the application writer does not want
- * FPU registers to be saved on interrupt entry their IRQ handler must be
- * called vApplicationIRQHandler().
- *****************************************************************************/
-
-.align 4
-.weak vApplicationIRQHandler
-.type vApplicationIRQHandler, %function
-vApplicationIRQHandler:
-	PUSH	{LR}
-	FMRX	R1,  FPSCR
-	VPUSH	{D0-D15}
-	VPUSH	{D16-D31}
-	PUSH	{R1}
-
-	LDR		r1, vApplicationFPUSafeIRQHandlerConst
-	BLX		r1
-
-	POP		{R0}
-	VPOP	{D16-D31}
-	VPOP	{D0-D15}
-	VMSR	FPSCR, R0
-
-	POP {PC}
+@.align 4
+@.type FreeRTOS_IRQ_Handler, %function
+@FreeRTOS_IRQ_Handler:
+@	/* Return to the interrupted instruction. */
+@	SUB		lr, lr, #4
+@
+@	/* Push the return address and SPSR. */
+@	PUSH	{lr}
+@	MRS		lr, SPSR
+@	PUSH	{lr}
+@
+@	/* Change to supervisor mode to allow reentry. */
+@	CPS		#SVC_MODE
+@
+@	/* Push used registers. */
+@	PUSH	{r0-r4, r12}
+@
+@	/* Increment nesting count.  r3 holds the address of ulPortInterruptNesting
+@	for future use.  r1 holds the original ulPortInterruptNesting value for
+@	future use. */
+@	LDR		r3, ulPortInterruptNestingConst
+@	LDR		r1, [r3]
+@	ADD		r4, r1, #1
+@	STR		r4, [r3]
+@
+@    // interrupt controller related
+@
+@	/* Read value from the interrupt acknowledge register, which is stored in r0
+@	for future parameter and interrupt clearing use. */
+@	LDR 	r2, ulSIR
+@	LDR		r2, [r2]
+@	LDR		r0, [r2]
+@
+@    // we need to add writing to bit 1 of control register to allow
+@    // new interrupts
+@    LDR     r2, ulCONTROL
+@    MOV     r4, #1
+@    STR     r4, [r2]
+@
+@
+@    // interrupt controller related
+@
+@	/* Ensure bit 2 of the stack pointer is clear.  r2 holds the bit 2 value for
+@	future use. */
+@	MOV		r2, sp
+@	AND		r2, r2, #4
+@	SUB		sp, sp, r2
+@
+@	/* Call the interrupt handler. */
+@	PUSH	{r0-r3, lr}
+@	LDR		r1, vApplicationIRQHandlerConst
+@	BLX		r1
+@	POP		{r0-r3, lr}
+@	ADD		sp, sp, r2
+@
+@	CPSID	i
+@	DSB
+@	ISB
+@
+@    // interrupt controller related -- interrupt done
+@
+@	/* Write the value read from ICCIAR to ICCEOIR. */
+@	@LDR 	r4, ulICCEOIRConst
+@	@LDR		r4, [r4]
+@	@STR		r0, [r4]
+@
+@    // interrupt controller related
+@
+@	/* Restore the old nesting count. */
+@	STR		r1, [r3]
+@
+@	/* A context switch is never performed if the nesting count is not 0. */
+@	CMP		r1, #0
+@	BNE		exit_without_switch
+@
+@	/* Did the interrupt request a context switch?  r1 holds the address of
+@	ulPortYieldRequired and r0 the value of ulPortYieldRequired for future
+@	use. */
+@	LDR		r1, =ulPortYieldRequired
+@	LDR		r0, [r1]
+@	CMP		r0, #0
+@	BNE		switch_before_exit
+@
+@exit_without_switch:
+@	/* No context switch.  Restore used registers, LR_irq and SPSR before
+@	returning. */
+@	POP		{r0-r4, r12}
+@	CPS		#IRQ_MODE
+@	POP		{LR}
+@	MSR		SPSR_cxsf, LR
+@	POP		{LR}
+@	MOVS	PC, LR
+@
+@switch_before_exit:
+@	/* A context swtich is to be performed.  Clear the context switch pending
+@	flag. */
+@	MOV		r0, #0
+@	STR		r0, [r1]
+@
+@	/* Restore used registers, LR-irq and SPSR before saving the context
+@	to the task stack. */
+@	POP		{r0-r4, r12}
+@	CPS		#IRQ_MODE
+@	POP		{LR}
+@	MSR		SPSR_cxsf, LR
+@	POP		{LR}
+@	portSAVE_CONTEXT
+@
+@	/* Call the function that selects the new task to execute.
+@	vTaskSwitchContext() if vTaskSwitchContext() uses LDRD or STRD
+@	instructions, or 8 byte aligned stack allocated data.  LR does not need
+@	saving as a new LR will be loaded by portRESTORE_CONTEXT anyway. */
+@	LDR		R0, vTaskSwitchContextConst
+@	BLX		R0
+@
+@	/* Restore the context of, and branch to, the task selected to execute
+@	next. */
+@	portRESTORE_CONTEXT
+@
+@
+@/******************************************************************************
+@ * If the application provides an implementation of vApplicationIRQHandler(),
+@ * then it will get called directly without saving the FPU registers on
+@ * interrupt entry, and this weak implementation of
+@ * vApplicationIRQHandler() will not get called.
+@ *
+@ * If the application provides its own implementation of
+@ * vApplicationFPUSafeIRQHandler() then this implementation of
+@ * vApplicationIRQHandler() will be called, save the FPU registers, and then
+@ * call vApplicationFPUSafeIRQHandler().
+@ *
+@ * Therefore, if the application writer wants FPU registers to be saved on
+@ * interrupt entry their IRQ handler must be called
+@ * vApplicationFPUSafeIRQHandler(), and if the application writer does not want
+@ * FPU registers to be saved on interrupt entry their IRQ handler must be
+@ * called vApplicationIRQHandler().
+@ *****************************************************************************/
+@
+@.align 4
+@.weak vApplicationIRQHandler
+@.type vApplicationIRQHandler, %function
+@vApplicationIRQHandler:
+@	PUSH	{LR}
+@	FMRX	R1,  FPSCR
+@	VPUSH	{D0-D15}
+@	VPUSH	{D16-D31}
+@	PUSH	{R1}
+@
+@	LDR		r1, vApplicationFPUSafeIRQHandlerConst
+@	BLX		r1
+@
+@	POP		{R0}
+@	VPOP	{D16-D31}
+@	VPOP	{D0-D15}
+@	VMSR	FPSCR, R0
+@
+@	POP {PC}
 
 
 @ulICCIARConst:	.word ulICCIAR
