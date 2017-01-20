@@ -75,8 +75,8 @@
 /******************************************************************************
 **                      INTERNAL MACRO DEFINITIONS
 *******************************************************************************/
-#define TIMER_INITIAL_COUNT             (0x5d41d4) // 1ms approximate
-#define TIMER_RLD_COUNT                 (0x5d41d4) // 1ms approximate
+#define TIMER_INITIAL_COUNT             (0xffffa261) // 1ms approximate
+#define TIMER_RLD_COUNT                 (0xffffa261) // 1ms approximate
 
 /******************************************************************************
 **                      INTERNAL FUNCTION PROTOTYPES

@@ -14,6 +14,7 @@ CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc
 LD = $(PREFIX)ld
 AR = $(PREFIX)ar
+BIN = $(PREFIX)objcopy
 
 APP_LOAD_ADDR = 0x80000000 # LOAD IN RAM
 
@@ -83,8 +84,9 @@ PLATFORM_INC := -Ilib/platform-am335x/include \
 				-Ilib/platform-am335x/include/armv7a \
 				-Ilib/platform-am335x/include/armv7a/am335x
 
-
 LINKER_SCRIPT = linker.lds
+
+BINFLAGS = -O binary
 
 # User Objects
 USER_OBJ := $(patsubst %.c, %.o, $(USER_SRC))
@@ -100,6 +102,9 @@ CFLAGS := -I$(RTOS_INC) -I . -I $(FREERTOS_PORT) -I inc $(PLATFORM_INC) \
 # Linker flags
 LDFLAGS := -e Entry -u Entry -u __aeabi_uidiv -u __aeabi_idiv --gc-sections
 
+
+# Export path on SD card
+EXPORT := /media/dumpram/BOOT
 
 all : app
 
@@ -119,14 +124,20 @@ obj/app.out : $(LIBSYSTEM_CONFIG) $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ)
 
 app : obj/app.out
 	@gcc -o ti_image tools/tiimage.c
-	./ti_image $(APP_LOAD_ADDR) NONE obj/app.out app
+	@$(BIN) $(BINFLAGS) obj/app.out obj/app.bin
+	./ti_image $(APP_LOAD_ADDR) NONE obj/app.bin app
 	@rm ti_image
 	@echo "Generated image successfully!"
 
 $(LIBSYSTEM_CONFIG) : $(LIBSYSTEM_CONFIG_OBJ)
-	@$(AR) $(ARFLAGS) $@ $(LIBSYSTEM_CONFIG_OBJ) 
+	@$(AR) $(ARFLAGS) $@ $(LIBSYSTEM_CONFIG_OBJ)
 	@echo "Created system_config library successfully!"
 
 clean :
 	rm -f $(LIBSYSTEM_CONFIG_OBJ) $(RTOS_OBJ) $(RTOS_AOBJ) $(USER_OBJ) \
 	obj/app.out app
+
+export: app
+	cp app $(EXPORT)/app
+	sync
+	@echo "App exported successfully!"
