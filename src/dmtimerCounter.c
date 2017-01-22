@@ -72,6 +72,12 @@
 #include "dmtimer.h"
 #include "error.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern volatile uint32_t ulPortYieldRequired;
+
+
 /******************************************************************************
 **                      INTERNAL MACRO DEFINITIONS
 *******************************************************************************/
@@ -115,30 +121,8 @@ void configure_platform(void)
     DMTimerSetUp();
 
     /* Enable the DMTimer interrupts */
-    DMTimerIntEnable(SOC_DMTIMER_2_REGS, DMTIMER_INT_OVF_EN_FLAG);
-
-    // ConsoleUtilsPrintf("Tencounter: ");
-    //
-    // /* Start the DMTimer */
-    // DMTimerEnable(SOC_DMTIMER_2_REGS);
-    //
-    // while(cntValue)
-    // {
-    //     if(flagIsr == 1)
-    //     {
-    //         ConsoleUtilsPrintf("\b%d",(cntValue - 1));
-    //         cntValue--;
-    //         flagIsr = 0;
-    //     }
-    // }
-    //
-    // /* Stop the DMTimer */
-    // DMTimerDisable(SOC_DMTIMER_2_REGS);
-    //
-    // PRINT_STATUS(S_PASS);
-    //
-    // /* Halt the program */
-    // while(1);
+    //DMTimerIntEnable(SOC_DMTIMER_2_RE S, DMTIMER_INT_OVF_EN_FLAG);
+    // this is done vSetupTickInterrupt called by task scheduler
 }
 
 /*
@@ -153,7 +137,7 @@ static void DMTimerAintcConfigure(void)
     IntRegister(SYS_INT_TINT2, DMTimerIsr);
 
     /* Set the priority */
-    IntPrioritySet(SYS_INT_TINT2, 0, AINTC_HOSTINT_ROUTE_IRQ);
+    IntPrioritySet(SYS_INT_TINT2, 0x2F, AINTC_HOSTINT_ROUTE_IRQ);
 
     /* Enable the system interrupt */
     IntSystemEnable(SYS_INT_TINT2);
@@ -186,8 +170,18 @@ static void DMTimerIsr(void)
     /* Clear the status of the interrupt flags */
     DMTimerIntStatusClear(SOC_DMTIMER_2_REGS, DMTIMER_INT_OVF_IT_FLAG);
 
-    ++cntValue;
+    // ++cntValue;
+    //
+    // if (cntValue >= 1000) {
+    //     ConsoleUtilsPrintf("Interrupt!\r\n");
+    //     cntValue = 0;
+    // }
 
+    if( xTaskIncrementTick() != pdFALSE )
+	{
+		ulPortYieldRequired = pdTRUE;
+        //ConsoleUtilsPrintf("Yield!\r\n");
+	}
     /* Enable the DMTimer interrupts */
     DMTimerIntEnable(SOC_DMTIMER_2_REGS, DMTIMER_INT_OVF_EN_FLAG);
 }

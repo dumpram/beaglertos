@@ -50,6 +50,7 @@
         .global UndefInstHandler
         .global CPUAbortHandler
         .global fnRAMVectors
+        .global vPortRestoreTaskContext
 
         .equ ADDR_SIR_IRQ, SOC_AINTC_REGS + INTC_SIR_IRQ
         .equ ADDR_SIR_FIQ, SOC_AINTC_REGS + INTC_SIR_FIQ
@@ -69,6 +70,8 @@
 
         .extern ulPortYieldRequired
         .extern ulPortInterruptNesting
+        .extern vTaskSwitchContext
+        .extern pxCurrentTCB
 
 @**************************** Text Section ************************************
         .text
@@ -84,16 +87,17 @@
 @ handled here
 @
 SVC_Handler:
-        STMFD    r13!, {r0-r1, r14}       @ Save context in SVC stack
-        SUB      r13, r13, #0x4           @ Adjust the stack pointer
-        LDR      r0, [r14, #-4]           @ R0 points to SWI instruction
-        BIC      r0, r0, #MASK_SVC_NUM    @ Get the SWI number
-        CMP      r0, #458752
-        MRSEQ    r1, spsr                 @ Copy SPSR
-        ORREQ    r1, r1, #0x1F            @ Change the mode to System
-        MSREQ    spsr_cf, r1              @ Restore SPSR
-        ADD      r13, r13, #0x4           @ Adjust the stack pointer
-        LDMFD    r13!, {r0-r1, pc}^       @ Restore registers from IRQ stack
+        @STMFD    r13!, {r0-r1, r14}       @ Save context in SVC stack
+        @SUB      r13, r13, #0x4           @ Adjust the stack pointer
+        @LDR      r0, [r14, #-4]           @ R0 points to SWI instruction
+        @BIC      r0, r0, #MASK_SVC_NUM    @ Get the SWI number
+        @CMP      r0, #458752
+        @MRSEQ    r1, spsr                 @ Copy SPSR
+        @ORREQ    r1, r1, #0x1F            @ Change the mode to System
+        @MSREQ    spsr_cf, r1              @ Restore SPSR
+        @ADD      r13, r13, #0x4           @ Adjust the stack pointer
+        @LDMFD    r13!, {r0-r1, pc}^       @ Restore registers from IRQ stack
+        B         save
 
 @******************************************************************************
 @*                  Function Definition of IRQ Handler
@@ -106,7 +110,7 @@ SVC_Handler:
 @
 IRQHandler:
         SUB      r14, r14, #4             @ Apply lr correction
-        STMFD    r13!, {r0-r3, r12, r14}  @ Save context
+        STMFD    r13!, {r0-r12, r14}      @ Save context
         MRS      r12, spsr                @ Copy spsr
         VMRS     r1, FPSCR                @ Copy fpscr
         STMFD    r13!, {r1, r12}          @ Save spsr and fpscr
@@ -155,12 +159,52 @@ IRQHandler:
         @
         CPSID    i, #MODE_IRQ
 
-        LDR      r0, =ulPortYieldRequired
-        LDR      r1, [r0]
+        LDR      r1, =ulPortYieldRequired
+        LDR      r0, [r1]
         CMP      r0, #0
         BEQ      exit
 
-switch:         
+switch: MOV      r0, #0                   @ Clear yield flag
+        STR      r0, [r1]
+
+        LDMFD    r13!, {r1}               @ Restore the threshold value
+        LDR      r0, =ADDR_THRESHOLD
+        STR      r1, [r0, #0]
+        VLDMIA   r13!, {d0-d7}            @ Restore D0-D7 Neon/VFP registers
+        LDMFD    r13!, {r1, r12}          @ Get fpscr and spsr
+        MSR      spsr, r12                @ Restore spsr
+        VMSR     fpscr, r1                @ Restore fpscr
+        LDMFD    r13!, {r0-r12, r14}      @ Restore general purpose registers
+
+        @ Saving context on current task stack
+
+save:   SRSDB	 sp!, #MODE_SYS           @ Save return address and cpsr
+        CPS      #MODE_SYS
+        STMFD    r13!, {r0-r12, r14}      @ Save general purpose registers
+        VMRS     r1, fpscr                @ Copy fpscr
+        STMFD    r13!, {r1}               @ Save fpscr
+        VSTMDB   r13!, {d0-d7}            @ Save D0-D7 NEON/VFP registers
+
+        LDR      r0, pxCurrentTCBConst
+        LDR      r1, [r0]
+        STR      r13, [r1]                @ Save stack
+
+        @ End of saving context
+
+        @ Preform context switch
+        LDR		 R0, vTaskSwitchContextConst
+        BLX      R0
+
+        @ Restore context of current task
+rest:   LDR      r0, pxCurrentTCBConst
+        LDR      r1, [r0]
+        LDR      r13, [r1]                @ Restore stack
+
+        VLDMIA   r13!, {d0-d7}            @ Restore D0-D7 Neon/VFP registers
+        LDMFD    r13!, {r1}               @ Get fpscr
+        VMSR     fpscr, r1                @ Restore fpscr
+        LDMFD    r13!, {r0-r12, r14}      @ Restore general purpose registers
+        RFEIA    r13!
 
 exit:   LDR      r0, =ADDR_THRESHOLD      @ Get the IRQ Threshold
 
@@ -177,9 +221,7 @@ exit:   LDR      r0, =ADDR_THRESHOLD      @ Get the IRQ Threshold
         MSR      spsr, r12                @ Restore spsr
         VMSR     fpscr, r1                @ Restore fpscr
 
-
-
-        LDMFD    r13!, {r0-r3, r12, pc}^  @ Restore the context and return
+        LDMFD    r13!, {r0-r12, pc}^      @ Restore the context and return
 
 @******************************************************************************
 @*                  Function Definition of FIQ Handler
@@ -218,9 +260,15 @@ loop0:
 @
 @ End of the file
 @
+
+.type vPortRestoreTaskContext, %function
+vPortRestoreTaskContext:
+    /* Switch to system mode. */
+    CPS		#MODE_SYS
+    B       rest
+
+
+vTaskSwitchContextConst: .word vTaskSwitchContext
+pxCurrentTCBConst: .word pxCurrentTCB
+
     .end
-
-.macro portSAVE_CONTEXT
-    cpsid i, #MODE_IRQ
-
-.endm

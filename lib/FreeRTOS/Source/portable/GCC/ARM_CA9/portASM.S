@@ -75,7 +75,7 @@
 
 	.global FreeRTOS_IRQ_Handler
 	.global FreeRTOS_SWI_Handler
-	.global vPortRestoreTaskContext
+@	.global vPortRestoreTaskContext
 
 
 
@@ -84,7 +84,7 @@
 
 	/* Save the LR and SPSR onto the system mode stack before switching to
 	system mode to save the remaining system mode registers. */
-	SRSDB	sp!, #SYS_MODE
+	SRSDB	sp!, #SYS_MODE @ tu se sprema na stog pxCode i CPSR
 	CPS		#SYS_MODE
 	PUSH	{R0-R12, R14}
 
@@ -169,25 +169,25 @@
 
 /******************************************************************************
  * SVC handler is used to start the scheduler.
- *****************************************************************************/
-.align 4
-.type FreeRTOS_SWI_Handler, %function
-FreeRTOS_SWI_Handler:
-	/* Save the context of the current task and select a new task to run. */
-	portSAVE_CONTEXT
-	LDR R0, vTaskSwitchContextConst
-	BLX	R0
-	portRESTORE_CONTEXT
-
-
-/******************************************************************************
- * vPortRestoreTaskContext is used to start the scheduler.
- *****************************************************************************/
-.type vPortRestoreTaskContext, %function
-vPortRestoreTaskContext:
-	/* Switch to system mode. */
-	CPS		#SYS_MODE
-	portRESTORE_CONTEXT
+@ *****************************************************************************/
+@.align 4
+@.type FreeRTOS_SWI_Handler, %function
+@FreeRTOS_SWI_Handler:
+@	/* Save the context of the current task and select a new task to run. */
+@	portSAVE_CONTEXT
+@	LDR R0, vTaskSwitchContextConst
+@	BLX	R0
+@	portRESTORE_CONTEXT
+@
+@
+@/******************************************************************************
+@ * vPortRestoreTaskContext is used to start the scheduler.
+@ *****************************************************************************/
+@.type vPortRestoreTaskContext, %function
+@vPortRestoreTaskContext:
+@	/* Switch to system mode. */
+@	CPS		#SYS_MODE
+@@	portRESTORE_CONTEXT
 
 @.align 4
 @.type FreeRTOS_IRQ_Handler, %function
@@ -352,17 +352,17 @@ vPortRestoreTaskContext:
 @ulICCEOIRConst:	.word ulICCEOIR
 @ulICCPMRConst: .word ulICCPMR
 
-ulTHRESHOLD: .word ulINTC_THRESHOLD_ADDRESS
-ulSIR: .word ulINTC_SIR_ADDRESS
-ulCONTROL: .word ulINTC_CONTROL_ADDRESS
-
-pxCurrentTCBConst: .word pxCurrentTCB
-ulCriticalNestingConst: .word ulCriticalNesting
-ulPortTaskHasFPUContextConst: .word ulPortTaskHasFPUContext
-ulMaxAPIPriorityMaskConst: .word ulMaxAPIPriorityMask
-vTaskSwitchContextConst: .word vTaskSwitchContext
-vApplicationIRQHandlerConst: .word vApplicationIRQHandler
-ulPortInterruptNestingConst: .word ulPortInterruptNesting
-vApplicationFPUSafeIRQHandlerConst: .word vApplicationFPUSafeIRQHandler
+@ulTHRESHOLD: .word ulINTC_THRESHOLD_ADDRESS
+@ulSIR: .word ulINTC_SIR_ADDRESS
+@ulCONTROL: .word ulINTC_CONTROL_ADDRESS
+@
+@pxCurrentTCBConst: .word pxCurrentTCB
+@ulCriticalNestingConst: .word ulCriticalNesting
+@ulPortTaskHasFPUContextConst: .word ulPortTaskHasFPUContext
+@ulMaxAPIPriorityMaskConst: .word ulMaxAPIPriorityMask
+@vTaskSwitchContextConst: .word vTaskSwitchContext
+@vApplicationIRQHandlerConst: .word vApplicationIRQHandler
+@ulPortInterruptNestingConst: .word ulPortInterruptNesting
+@vApplicationFPUSafeIRQHandlerConst: .word vApplicationFPUSafeIRQHandler
 
 .end

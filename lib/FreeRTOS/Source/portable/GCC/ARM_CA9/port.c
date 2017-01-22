@@ -69,12 +69,16 @@
 
 /* Standard includes. */
 #include <stdlib.h>
-#include "interrupt.h"
+#include <string.h>
 
+#include "interrupt.h"
+#include "consoleUtils.h"
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
+
+extern volatile int **pxCurrentTCB;
 
 /* Some vendor specific files default configCLEAR_TICK_INTERRUPT() in
 portmacro.h. */
@@ -249,11 +253,14 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t px
 	*pxTopOfStack = ( StackType_t ) 0x01010101;	/* R1 */
 	pxTopOfStack--;
 	*pxTopOfStack = ( StackType_t ) pvParameters; /* R0 */
-	pxTopOfStack--;
+
+    ConsoleUtilsPrintf("Initialising stack of task!\r\n");
+
+
 
 	/* The task will start with a critical nesting count of 0 as interrupts are
 	enabled. */
-	*pxTopOfStack = portNO_CRITICAL_NESTING;
+	// *pxTopOfStack = portNO_CRITICAL_NESTING; // removed for now
 
 	#if( configUSE_TASK_FPU_SUPPORT == 1 )
 	{
@@ -270,15 +277,21 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t px
 		pxTopOfStack -= portFPU_REGISTER_WORDS;
 		memset( pxTopOfStack, 0x00, portFPU_REGISTER_WORDS * sizeof( StackType_t ) );
 
-		pxTopOfStack--;
-		*pxTopOfStack = pdTRUE;
-		ulPortTaskHasFPUContext = pdTRUE;
+		//pxTopOfStack--;
+		//*pxTopOfStack = pdTRUE; removde for now
+		//ulPortTaskHasFPUContext = pdTRUE; remo
 	}
 	#else
 	{
-		#error Invalid configUSE_TASK_FPU_SUPPORT setting - configUSE_TASK_FPU_SUPPORT must be set to 1, 2, or left undefined.
+		#error Invalid configUSE_TASK_FPU_SUPPORT setting -
+        configUSE_TASK_FPU_SUPPORT must be set to 1, 2, or left undefined.
 	}
 	#endif
+
+    unsigned int i;
+    for (i = 0; i < 33; i++) {
+        ConsoleUtilsPrintf("%x : %x\r\n", pxTopOfStack + i, *(pxTopOfStack + i));
+    }
 
 	return pxTopOfStack;
 }
@@ -319,6 +332,13 @@ uint32_t ulAPSR;
 		configSETUP_TICK_INTERRUPT(); // should start TI DMTIMER
 
 		/* Start the first task executing. */
+        ConsoleUtilsPrintf("Dumping context before restoring context\r\n");
+        unsigned int i;
+        for (i = 0; i < 33; i++) {
+            ConsoleUtilsPrintf("%x : %x\r\n", (*pxCurrentTCB + i),
+                *(*pxCurrentTCB + i));
+        }
+
 		vPortRestoreTaskContext();
 	}
 	/* Will only get here if vTaskStartScheduler() was called with the CPU in

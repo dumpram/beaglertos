@@ -6,18 +6,48 @@
 #include "error.h"
 
 #include "FreeRTOS.h"
+#include "task.h"
 
 void configure_platform(void);
 extern volatile unsigned int cntValue;
+
+void vTask1(void *pvParameters) {
+    int i = 0;
+    while (1) {
+       ConsoleUtilsPrintf("Task 1 message %d!\r\n", i++);
+       vTaskDelay(1000);
+    }
+}
+
+void vTask2(void *pvParameters) {
+    int i = 0, j;
+    while (1) {
+        ConsoleUtilsPrintf("Task 2 message %d!\r\n", i++);
+        vTaskDelay(500);
+    }
+}
+
 
 int main() {
     configure_platform();
     ConsoleUtilsPrintf("Platform initialized.\r\n");
 
-    while (1) {
-        if (cntValue == 1000) {
-            ConsoleUtilsPrintf("One second passed!\r\n");
-            cntValue = 0;
-        }
+    int ret = xTaskCreate(vTask1, "Task 1", 1000, NULL, 1, NULL);
+    if (ret == pdPASS) {
+        ConsoleUtilsPrintf("Task %x succesfully created.\r\n", vTask1);
+    } else {
+        ConsoleUtilsPrintf("Task not created: %d", ret);
     }
+    ret =  xTaskCreate(vTask2, "Task 2", 1000, NULL, 2, NULL);
+    if (ret == pdPASS) {
+        ConsoleUtilsPrintf("Task %x succesfully created.\r\n", vTask2);
+    } else {
+        ConsoleUtilsPrintf("Task not created: %d", ret);
+    }
+
+    vTaskStartScheduler();
+
+    while(1);
+
+
 }
