@@ -14,19 +14,24 @@ extern volatile unsigned int cntValue;
 void vTask1(void *pvParameters) {
     int i = 0;
     while (1) {
+       vTaskSuspendAll();
        ConsoleUtilsPrintf("Task 1 message %d!\r\n", i++);
+       xTaskResumeAll();
        vTaskDelay(1000);
+
     }
 }
 
 void vTask2(void *pvParameters) {
     int i = 0, j;
     while (1) {
+        vTaskSuspendAll();
         ConsoleUtilsPrintf("Task 2 message %d!\r\n", i++);
+        xTaskResumeAll();
         vTaskDelay(500);
+
     }
 }
-
 
 int main() {
     configure_platform();
@@ -44,7 +49,6 @@ int main() {
     } else {
         ConsoleUtilsPrintf("Task not created: %d", ret);
     }
-
     vTaskStartScheduler();
 
     while(1);

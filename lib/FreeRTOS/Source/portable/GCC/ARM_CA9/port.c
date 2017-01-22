@@ -91,8 +91,8 @@ portmacro.h. */
 this value. */
 #define portNO_CRITICAL_NESTING			( ( uint32_t ) 0 )
 
-/* In all GICs 255 can be written to the priority mask register to unmask all
-(but the lowest) interrupt priority. */
+/* In INTC can be written to the priority mask register to unmask all
+   priorities */
 #define portUNMASK_VALUE				( 0xFFUL )
 
 /* Tasks are not created with a floating point context, but can be given a
@@ -136,7 +136,7 @@ the CPU itself before modifying certain hardware registers. */
 #define portCLEAR_INTERRUPT_MASK()									\
 {																	\
 	portCPU_IRQ_DISABLE();											\
-	IntPriorityThresholdSet(INTC_THRESHOLD_PRIORITYTHRESHOLD);		\
+	IntPriorityThresholdSet(portUNMASK_VALUE);		\
 	__asm volatile (	"DSB		\n"								\
 						"ISB		\n" );							\
 	portCPU_IRQ_ENABLE();											\
