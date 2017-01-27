@@ -5,37 +5,43 @@
 #include "dmtimer.h"
 #include "error.h"
 
+
 #include "FreeRTOS.h"
+#include "semphr.h"
+
 #include "task.h"
 
 void configure_platform(void);
 extern volatile unsigned int cntValue;
 
+xSemaphoreHandle xBinarySemaphore;
+
 void vTask1(void *pvParameters) {
     int i = 0;
     while (1) {
-       vTaskSuspendAll();
+       xSemaphoreTake(xBinarySemaphore, portMAX_DELAY);
        ConsoleUtilsPrintf("Task 1 message %d!\r\n", i++);
-       xTaskResumeAll();
+       xSemaphoreGive(xBinarySemaphore);
        vTaskDelay(1000);
-
     }
 }
 
 void vTask2(void *pvParameters) {
     int i = 0, j;
     while (1) {
-        vTaskSuspendAll();
+        xSemaphoreTake(xBinarySemaphore, portMAX_DELAY);
         ConsoleUtilsPrintf("Task 2 message %d!\r\n", i++);
-        xTaskResumeAll();
+        xSemaphoreGive(xBinarySemaphore);
         vTaskDelay(500);
-
     }
 }
 
 int main() {
     configure_platform();
     ConsoleUtilsPrintf("Platform initialized.\r\n");
+
+    xBinarySemaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(xBinarySemaphore);
 
     int ret = xTaskCreate(vTask1, "Task 1", 1000, NULL, 1, NULL);
     if (ret == pdPASS) {

@@ -119,10 +119,7 @@ void configure_platform(void)
 
     /* Perform the necessary configurations for DMTimer */
     DMTimerSetUp();
-
-    /* Enable the DMTimer interrupts */
-    //DMTimerIntEnable(SOC_DMTIMER_2_RE S, DMTIMER_INT_OVF_EN_FLAG);
-    // this is done vSetupTickInterrupt called by task scheduler
+    
 }
 
 /*
